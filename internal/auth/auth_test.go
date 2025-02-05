@@ -6,15 +6,55 @@ import (
 )
 
 func TestGetAPIKey(t *testing.T) {
-	headers := make(http.Header)
-
-	key, err := GetAPIKey(headers)
-
-	if err != ErrNoAuthHeaderIncluded {
-		t.Errorf("Expected ErrNoAuthHeaderIncluded, got %v", err)
+	testCases := []struct {
+		name          string
+		headers       http.Header
+		expectedKey   string
+		expectedError error
+	}{
+		{
+			name:          "no header",
+			headers:       make(http.Header),
+			expectedKey:   "",
+			expectedError: ErrNoAuthHeaderIncluded,
+		},
+		{
+			name: "malformed header",
+			headers: http.Header{
+				"Authorization": []string{"Bearer test123"},
+			},
+			expectedKey:   "",
+			expectedError: ErrMalformedAuthHeader,
+		},
+		{
+			name: "valid api key",
+			headers: http.Header{
+				"Authorization": []string{"ApiKey test123"},
+			},
+			expectedKey:   "",
+			expectedError: nil,
+		},
 	}
 
-	if key != "" {
-		t.Errorf("Expected empty key, got %v", key)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			key, err := GetAPIKey(tc.headers)
+
+			if tc.expectedError != nil {
+				if err == nil {
+					t.Errorf("Expected error %v, got nil", tc.expectedError)
+					return
+				}
+				if err.Error() != tc.expectedError.Error() {
+					t.Errorf("Expected error %v, got %v", tc.expectedError, err)
+				}
+			} else if err != nil {
+				t.Errorf("Expected no error, got %v", err)
+			}
+
+			if key != tc.expectedKey {
+				t.Errorf("Expected key %q, got %q", tc.expectedKey, key)
+			}
+		})
 	}
 }
